@@ -1,3 +1,4 @@
 streamlit
 lz4
 pyobjc
+cryptography
