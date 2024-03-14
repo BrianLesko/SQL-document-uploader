@@ -66,6 +66,7 @@ class SQLConnectDocker:
                 charset='utf8mb4',
                 cursorclass=pymysql.cursors.DictCursor
             )
+            self.connection = self.conn
             self.cursor = self.conn.cursor()
             return self.cursor
     
@@ -81,15 +82,31 @@ class SQLConnectDocker:
             print("An error occured during the query")
             return e
 
-    def update(self, query):
+    def update(self, sql):
         try:
-            self.cursor.execute(query)
-            self.conn.commit()
+            self.cursor.execute(sql)
+            self.connection.commit()
         except Exception as e:
-            return e
+            print(f"An error occurred during the update: {str(e)}")
     
     def close(self):
         self.conn.close()
+
+    def write_to_table(self, filename, Characters, UTF8_length, compressed_length):
+        try:
+            table = 'size'
+            self.query("USE user")
+            self.update(f"INSERT INTO {table} (name, characters, utf8_size, compressed_size) VALUES ('{filename}', {Characters}, {UTF8_length}, {compressed_length});")
+            self.connection.commit()
+        except Exception as e:
+            print(f"An error occurred during the query: {str(e)}")
+
+    def describe_table(self, table_name):
+        try:
+            self.cursor.execute(f"DESCRIBE {table_name};")
+            return self.cursor.fetchall()
+        except Exception as e:
+            return e
 
 def example():
     # Example usage

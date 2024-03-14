@@ -24,7 +24,9 @@ def extract_text_from_pdf(pdf_path):
     for i in range(pdf_doc.pageCount()):
         page = pdf_doc.pageAtIndex_(i)
         if page is not None:
-            extracted_text += page.string()
+            page_text = page.string()
+            if page_text is not None:
+                extracted_text += page_text
 
     return extracted_text
 
@@ -40,6 +42,7 @@ def main():
 
     gui.setup(wide=True, text="Extract Text from PDF files. Enter the path to the file.")
     st.title('Extract Text from PDF files')
+    current_task = st.empty()
 
     if "sql" not in st.session_state:
         st.session_state.sql = SQLConnect()
@@ -62,38 +65,46 @@ def main():
             sql.stop_container()
             sql.start_container()
 
-        # List all files in the directory
+        # List all PDF files in the directory without extensions
         directory = "documents/"
-        files = [file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))]
-
+        files = [os.path.splitext(f)[0] for f in os.listdir(directory) if f.endswith('.pdf')]
         # write the names of the files to the sidebar
-        st.write("Files in the directory:")
+        "---"
+        st.header("Files in the directory:")
         for file in files:
             st.write(file)
-
-    path = st.text_input("Enter the path to the PDF file:")
     
-    if path: 
-        st.write(f"Path: {path}")
+    sql.query("USE user")
+    existing = sql.query("SELECT name FROM size;")
+    st.write(f"{len(existing)} Rows in the database.")
+    # Convert existing to a set
+    existing_files = set([file['name'] for file in existing])
+    st.write(f"{len(existing_files)} Unique files in the database.")
+    # Convert files to a set and get the difference
+    to_upload = list(set(files) - existing_files)
+    st.write(f"{len(to_upload)} files to upload.")
+
+    directory_structure = sql.describe_table("size")
+    for column in directory_structure:
+        print(column)
+
+    for file in to_upload:
+        path = directory + file + '.pdf'
+
         with st.spinner('Extracting text from PDF...'):
             text = extract_text_from_pdf(path)
         if text:
-            st.write(f"There are {len(text)} characters in the PDF file.")
             with st.spinner('Encoding the text as UTF-8...'):
                 encoded_text = text.encode()
-            st.write(f"Encoding the text as UTF-8, the file is {len(encoded_text)} bytes.")
             with st.spinner('Compressing the text...'):
                 compressed_text = compress(text)
-            st.write(f"When compressed, the file is {len(compressed_text)} bytes.")
-            # print the compression ratio
-            st.write(f"The compression ratio is {len(compressed_text)/len(encoded_text):.2f}.")
-            # decompress the text
-            with st.spinner('Decompressing the text...'):
-                decompressed_text = decompress(compressed_text)
-            st.write(f"The decompressed, encoded text is {len(decompressed_text)} characters.")
-            # decode the text
-            with st.spinner('Decoding the text...'):
-                decoded_text = decompressed_text.decode()
-            st.write(f"The decoded text is {len(decoded_text)} characters.")
+            name = str(file)
+            length = len(text)
+            encoded_length = len(encoded_text)
+            compressed_length = len(compressed_text)
 
+            # write to the SQL database in a new table called directory where the columns are name, length, encoded_length, and compressed_length
+            current_task.write(f"Writing {path} to the SQL database...")
+            sql.write_to_table(name, length, encoded_length, compressed_length)
+            sql.cursor.execute("INSERT INTO content (name, content) VALUES (%s, %s);", (name, text))
 main()
