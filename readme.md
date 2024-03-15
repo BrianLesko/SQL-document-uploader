@@ -1,6 +1,6 @@
 
 # Text Compression from an PDF file
-This code implements text parsing from a PDF File and then text compression
+This code uploads whole, medium sized documents to a SQL server 
 
 &nbsp;
 
@@ -9,7 +9,7 @@ This code implements text parsing from a PDF File and then text compression
 This code uses the following libraries:
 - `streamlit`: for building the user interface.
 - `pyobjc`: for the PDF text extraction.
-- `lz4`: for compressing the encoded text.
+
 
 &nbsp;
 
